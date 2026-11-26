@@ -21,18 +21,18 @@ jobs:
           meson setup build -Dunit_tests=disabled -Dbuildtype=debugoptimized
           meson compile -C build src/mf6:executable
       - name: Baseline native oracle
-        run: python research/mf01_native.py build/src/mf6 baseline
+        run: python research/npf_implicit_k22.py build/src/mf6 baseline
       - name: Apply candidate correction (runner only)
         run: |
           python - <<'PY'
           from pathlib import Path
-          p=Path("src/Exchange/exg-gwfgwf.f90")
+          p=Path("src/Model/GroundWaterFlow/gwf-npf.f90")
           s=p.read_text()
-          for a,b in [("vg(1) = abs(cos(angle))","vg(1) = cos(angle)"),("vg(2) = abs(sin(angle))","vg(2) = sin(angle)")]:
-              assert s.count(a)==1, a
-              s=s.replace(a,b)
-          p.write_text(s)
+          a="      hy = hy11\n      if (this%ik22 > 0) then"
+          b="      hy = hy11\n      if (this%ik22 > 0 .or. this%iangle2 > 0) then"
+          assert s.count(a)==1, a
+          p.write_text(s.replace(a,b))
           PY
           meson compile -C build src/mf6:executable
       - name: Corrected native oracle
-        run: python research/mf01_native.py build/src/mf6 corrected
+        run: python research/npf_implicit_k22.py build/src/mf6 corrected
