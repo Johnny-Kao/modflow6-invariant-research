@@ -1,0 +1,38 @@
+name: MF-01 native invariant
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install minimal build dependencies
+        run: |
+          python -m pip install 'meson>=1.7' ninja flopy
+          gfortran --version
+      - name: Build original source
+        run: |
+          meson setup build -Dunit_tests=disabled -Dbuildtype=debugoptimized
+          meson compile -C build mf6
+      - name: Baseline native oracle
+        run: python research/mf01_native.py build/src/mf6 baseline
+      - name: Apply candidate correction (runner only)
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path("src/Exchange/exg-gwfgwf.f90")
+          s=p.read_text()
+          for a,b in [("vg(1) = abs(cos(angle))","vg(1) = cos(angle)"),("vg(2) = abs(sin(angle))","vg(2) = sin(angle)")]:
+              assert s.count(a)==1, a
+              s=s.replace(a,b)
+          p.write_text(s)
+          PY
+          meson compile -C build mf6
+      - name: Corrected native oracle
+        run: python research/mf01_native.py build/src/mf6 corrected
