@@ -20,5 +20,19 @@ jobs:
         run: |
           meson setup build -Dunit_tests=disabled -Dbuildtype=debugoptimized
           meson compile -C build src/mf6:executable
-      - name: NPF consistency measurements
-        run: python research/npf_core_consistency.py build/src/mf6
+      - name: Baseline physical inventory
+        run: python research/npfa_mass.py build/src/mf6 baseline
+      - name: Candidate refresh of default saturation (runner only)
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("src/Model/GroundWaterFlow/gwf-npf.f90")
+          s = p.read_text()
+          a = "    ! -- Calculate the flow across each cell face and store in flowja"
+          assert s.count(a) == 1
+          s = s.replace(a, "    call this%default_form%cf(0)\n    !\n" + a)
+          p.write_text(s)
+          PY
+          meson compile -C build src/mf6:executable
+      - name: Corrected physical inventory
+        run: python research/npfa_mass.py build/src/mf6 corrected
