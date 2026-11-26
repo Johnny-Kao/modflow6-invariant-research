@@ -1,4 +1,4 @@
-name: MF-01 native invariant
+name: MF-11 native confined storage retry
 on:
   workflow_dispatch:
 permissions:
@@ -21,18 +21,20 @@ jobs:
           meson setup build -Dunit_tests=disabled -Dbuildtype=debugoptimized
           meson compile -C build src/mf6:executable
       - name: Baseline native oracle
-        run: python research/mf01_native.py build/src/mf6 baseline
+        run: python research/mf11_native.py build/src/mf6 baseline
       - name: Apply candidate correction (runner only)
         run: |
           python - <<'PY'
           from pathlib import Path
-          p=Path("src/Exchange/exg-gwfgwf.f90")
-          s=p.read_text()
-          for a,b in [("vg(1) = abs(cos(angle))","vg(1) = cos(angle)"),("vg(2) = abs(sin(angle))","vg(2) = sin(angle)")]:
-              assert s.count(a)==1, a
-              s=s.replace(a,b)
+          p = Path("src/Model/GroundWaterFlow/gwf-sto.f90")
+          s = p.read_text()
+          a = "  subroutine sto_ad(this)\n    ! -- modules\n    use TdisModule, only: kstp"
+          b = "    if (this%integratechanges /= 0 .and. kstp > 1) then"
+          assert s.count(a) == 1 and s.count(b) == 1
+          s = s.replace(a, a + "\n    use SimVariablesModule, only: iFailedStepRetry")
+          s = s.replace(b, "    if (this%integratechanges /= 0 .and. kstp > 1 .and. &\n        iFailedStepRetry == 0) then")
           p.write_text(s)
           PY
           meson compile -C build src/mf6:executable
       - name: Corrected native oracle
-        run: python research/mf01_native.py build/src/mf6 corrected
+        run: python research/mf11_native.py build/src/mf6 corrected
