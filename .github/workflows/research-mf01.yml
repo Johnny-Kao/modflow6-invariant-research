@@ -1,4 +1,4 @@
-name: MF-01 native invariant
+name: MF-13 EVT segment invariant
 on:
   workflow_dispatch:
 permissions:
@@ -21,18 +21,18 @@ jobs:
           meson setup build -Dunit_tests=disabled -Dbuildtype=debugoptimized
           meson compile -C build src/mf6:executable
       - name: Baseline native oracle
-        run: python research/mf01_native.py build/src/mf6 baseline
+        run: python research/mf13_native.py build/src/mf6 baseline
       - name: Apply candidate correction (runner only)
         run: |
           python - <<'PY'
           from pathlib import Path
-          p=Path("src/Exchange/exg-gwfgwf.f90")
+          p=Path("src/Model/GroundWaterFlow/gwf-evt.f90")
           s=p.read_text()
-          for a,b in [("vg(1) = abs(cos(angle))","vg(1) = cos(angle)"),("vg(2) = abs(sin(angle))","vg(2) = sin(angle)")]:
-              assert s.count(a)==1, a
-              s=s.replace(a,b)
-          p.write_text(s)
+          a="              trhs = c - c * s / x\n              thcof = -c / x"
+          b="              if (this%surfratespecified) c = c * petm0\n              trhs = c - c * s / x\n              thcof = -c / x"
+          assert s.count(a)==1
+          p.write_text(s.replace(a,b))
           PY
           meson compile -C build src/mf6:executable
       - name: Corrected native oracle
-        run: python research/mf01_native.py build/src/mf6 corrected
+        run: python research/mf13_native.py build/src/mf6 corrected
