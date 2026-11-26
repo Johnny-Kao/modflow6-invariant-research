@@ -19,7 +19,7 @@ jobs:
       - name: Build original source
         run: |
           meson setup build -Dunit_tests=disabled -Dbuildtype=debugoptimized
-          meson compile -C build mf6
+          meson compile -C build src/mf6:executable
       - name: Baseline native oracle
         run: python research/mf01_native.py build/src/mf6 baseline
       - name: Apply candidate correction (runner only)
@@ -33,6 +33,6 @@ jobs:
               s=s.replace(a,b)
           p.write_text(s)
           PY
-          meson compile -C build mf6
+          meson compile -C build src/mf6:executable
       - name: Corrected native oracle
         run: python research/mf01_native.py build/src/mf6 corrected
