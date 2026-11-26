@@ -1,0 +1,41 @@
+name: SFR ATS retry invariant
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Build baseline
+        run: |
+          python -m pip install 'meson>=1.7' ninja flopy
+          meson setup build -Dunit_tests=disabled -Dbuildtype=debugoptimized
+          meson compile -C build src/mf6:executable
+      - name: Accepted-step replay baseline
+        run: python research/sfr_ats_retry.py build/src/mf6 baseline
+      - name: Preserve start-of-step snapshot on retries (runner-only)
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("src/Model/GroundWaterFlow/gwf-sfr.f90")
+          s = p.read_text()
+          start = s.index("  subroutine sfr_ad(this)")
+          end = s.index("  end subroutine sfr_ad", start)
+          part = s[start:end]
+          a = "    use ConstantsModule, only: LENVARNAME"
+          assert part.count(a) == 1
+          part = part.replace(a, a + "\n    use SimVariablesModule, only: iFailedStepRetry")
+          a = "    if (this%istorage == 1) then"
+          assert part.count(a) == 1
+          part = part.replace(a, "    if (this%istorage == 1 .and. iFailedStepRetry == 0) then")
+          p.write_text(s[:start] + part + s[end:])
+          PY
+          meson compile -C build src/mf6:executable
+      - name: Accepted-step replay candidate
+        run: python research/sfr_ats_retry.py build/src/mf6 corrected
