@@ -26,7 +26,8 @@ def run_case(ws, shape, flow):
     flopy.mf6.ModflowGwfnpf(gwf, icelltype=0, k=1.)
     flopy.mf6.ModflowGwfchd(gwf, stress_period_data=[((0, 0, 0), 5.)])
     flopy.mf6.ModflowGwfoc(gwf, budget_filerecord="gwf.cbc",
-                          saverecord=[("BUDGET", "ALL")])
+                          head_filerecord="gwf.hds",
+                          saverecord=[("HEAD", "ALL"), ("BUDGET", "ALL")])
     extra = {}
     if shape == "trapezoid":
         # 4 m bottom, 10 m bank width, 2 m high, symmetric straight banks.
